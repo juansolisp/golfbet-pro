@@ -38,6 +38,9 @@ yarn-error.log*
 # Prisma
 prisma/*.db
 
+# TypeScript build info
+*.tsbuildinfo
+
 # IDE
 .idea
 .vscode

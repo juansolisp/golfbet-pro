@@ -166,8 +166,8 @@ function generateHoles(): Array<{ number: number; par: number; yards: number; ha
   return pars.map((par, i) => ({
     number: i + 1,
     par,
-    yards: baseYards[i] + Math.floor(Math.random() * 40) - 20,
-    handicapIndex: handicapIndexes[i],
+    yards: (baseYards[i] ?? 400) + Math.floor(Math.random() * 40) - 20,
+    handicapIndex: handicapIndexes[i] ?? (i + 1),
   }));
 }
 

@@ -5,12 +5,13 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "./dist",
-    "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "incremental": true
+    "incremental": true,
+    "strictPropertyInitialization": false,
+    "noUncheckedIndexedAccess": false
   }
 }
