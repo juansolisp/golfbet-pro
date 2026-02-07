@@ -1,0 +1,41 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-info:
+    name: PR Info
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed
+        run: |
+          echo "files=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | tr '\n' ',')" >> $GITHUB_OUTPUT
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const files = '${{ steps.changed.outputs.files }}'.split(',').filter(Boolean);
+            const apiChanged = files.some(f => f.startsWith('apps/api/'));
+            const webChanged = files.some(f => f.startsWith('apps/web/'));
+            const sharedChanged = files.some(f => f.startsWith('packages/'));
+            
+            let body = '## Changes Summary\n\n';
+            body += `- API: ${apiChanged ? '✅ Modified' : '⬜ No changes'}\n`;
+            body += `- Web: ${webChanged ? '✅ Modified' : '⬜ No changes'}\n`;
+            body += `- Shared: ${sharedChanged ? '✅ Modified' : '⬜ No changes'}\n`;
+            body += `\nTotal files changed: ${files.length}`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

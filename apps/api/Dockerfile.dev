@@ -1,0 +1,16 @@
+FROM node:20-alpine
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/tsconfig/package.json ./packages/tsconfig/
+RUN npm install --workspace=@golfbet/api --workspace=@golfbet/shared --include-workspace-root
+
+COPY packages/ ./packages/
+COPY apps/api/ ./apps/api/
+
+RUN cd apps/api && npx prisma generate
+
+EXPOSE 3001
+CMD ["npm", "run", "dev", "--workspace=@golfbet/api"]

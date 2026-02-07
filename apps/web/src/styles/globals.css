@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --primary: 142.1 76.2% 36.3%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 45.4 93.4% 47.5%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-dark-950 text-dark-50 font-sans antialiased;
+  }
+}
+
+@layer components {
+  .score-eagle {
+    @apply bg-gold-500 text-dark-950 rounded-full;
+  }
+  .score-birdie {
+    @apply bg-golf-500 text-white rounded-full;
+  }
+  .score-par {
+    @apply bg-dark-700 text-dark-100;
+  }
+  .score-bogey {
+    @apply bg-dark-600 text-dark-200;
+  }
+  .score-double-bogey {
+    @apply bg-red-900/50 text-red-200;
+  }
+  .btn-primary {
+    @apply bg-golf-600 hover:bg-golf-500 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 active:scale-95;
+  }
+  .btn-secondary {
+    @apply bg-dark-800 hover:bg-dark-700 text-dark-100 font-medium py-3 px-6 rounded-xl border border-dark-600 transition-all duration-200 active:scale-95;
+  }
+  .btn-gold {
+    @apply bg-gold-500 hover:bg-gold-400 text-dark-950 font-semibold py-3 px-6 rounded-xl transition-all duration-200 active:scale-95;
+  }
+  .card {
+    @apply bg-dark-900 border border-dark-700 rounded-2xl p-4;
+  }
+  .card-elevated {
+    @apply bg-dark-800 border border-dark-600 rounded-2xl p-4 shadow-xl shadow-black/20;
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}

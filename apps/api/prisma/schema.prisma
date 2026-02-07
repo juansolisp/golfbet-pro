@@ -1,0 +1,396 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== User & Auth =====
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  avatar        String?
+  handicap      Float     @default(0)
+  passwordHash  String?
+  tier          SubscriptionTier @default(FREE)
+  
+  // OAuth
+  googleId      String?   @unique
+  appleId       String?   @unique
+  
+  // Preferences
+  preferences   Json      @default("{}")
+  pushToken     String?
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+  
+  // Relations
+  groupMemberships  GroupMember[]
+  roundPlayers      RoundPlayer[]
+  scores            Score[]
+  betResultsWon     BetResult[]     @relation("BetResultWinner")
+  betResultsLost    BetResult[]     @relation("BetResultLoser")
+  settlementsFrom   Settlement[]    @relation("SettlementFrom")
+  settlementsTo     Settlement[]    @relation("SettlementTo")
+  createdRounds     Round[]         @relation("RoundCreator")
+  createdGroups     Group[]         @relation("GroupCreator")
+  sideBetWins       SideBetResult[] @relation("SideBetWinner")
+  sessions          Session[]
+  accounts          Account[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ===== Groups =====
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  avatarUrl   String?
+  inviteCode  String   @unique
+  creatorId   String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  creator     User          @relation("GroupCreator", fields: [creatorId], references: [id])
+  members     GroupMember[]
+  rounds      Round[]
+
+  @@index([inviteCode])
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String    @id @default(cuid())
+  groupId  String
+  userId   String
+  role     GroupRole  @default(MEMBER)
+  joinedAt DateTime   @default(now())
+  
+  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+// ===== Courses =====
+
+model Course {
+  id           String   @id @default(cuid())
+  name         String
+  city         String
+  state        String
+  country      String   @default("US")
+  slopeRating  Float    @default(113)
+  courseRating  Float    @default(72)
+  totalPar     Int      @default(72)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  holes        Hole[]
+  rounds       Round[]
+
+  @@index([name])
+  @@index([city, state])
+  @@map("courses")
+}
+
+model Hole {
+  id             String  @id @default(cuid())
+  courseId        String
+  number         Int
+  par            Int
+  yards          Int
+  handicapIndex  Int     // 1-18, difficulty ranking
+  
+  course         Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, number])
+  @@map("holes")
+}
+
+// ===== Rounds =====
+
+model Round {
+  id         String      @id @default(cuid())
+  courseId   String
+  groupId    String
+  creatorId  String
+  type       RoundType   @default(EIGHTEEN_HOLES)
+  status     RoundStatus @default(PENDING)
+  date       DateTime    @default(now())
+  
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  completedAt DateTime?
+  
+  course      Course        @relation(fields: [courseId], references: [id])
+  group       Group         @relation(fields: [groupId], references: [id])
+  creator     User          @relation("RoundCreator", fields: [creatorId], references: [id])
+  players     RoundPlayer[]
+  bets        Bet[]
+  settlements Settlement[]
+  sideBets    SideBet[]
+
+  @@index([groupId])
+  @@index([status])
+  @@index([date])
+  @@map("rounds")
+}
+
+model RoundPlayer {
+  id              String  @id @default(cuid())
+  roundId         String
+  userId          String
+  courseHandicap   Int    @default(0)
+  
+  round           Round   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user            User    @relation(fields: [userId], references: [id])
+  scores          Score[]
+
+  @@unique([roundId, userId])
+  @@map("round_players")
+}
+
+model Score {
+  id          String    @id @default(cuid())
+  roundPlayerId String
+  userId      String
+  roundId     String
+  hole        Int
+  strokes     Int
+  putts       Int?
+  fairwayHit  Boolean?
+  gir         Boolean?  // Green in Regulation
+  
+  // Offline sync
+  localId     String?   // Client-generated ID for offline sync
+  syncedAt    DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  roundPlayer RoundPlayer @relation(fields: [roundPlayerId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+
+  @@unique([roundPlayerId, hole])
+  @@index([roundId])
+  @@map("scores")
+}
+
+// ===== Bets =====
+
+model Bet {
+  id       String    @id @default(cuid())
+  roundId  String
+  type     BetType
+  status   BetStatus @default(PENDING)
+  config   Json      // BetConfig JSON - flexible config per bet type
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  round    Round       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  results  BetResult[]
+  presses  NassauPress[]
+
+  @@index([roundId])
+  @@map("bets")
+}
+
+model BetResult {
+  id          String  @id @default(cuid())
+  betId       String
+  winnerId    String
+  loserId     String
+  amount      Float
+  description String
+  segment     String? // "front_nine", "back_nine", "total", "press_1", "skin_5", etc.
+  
+  createdAt   DateTime @default(now())
+  
+  bet         Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
+  winner      User    @relation("BetResultWinner", fields: [winnerId], references: [id])
+  loser       User    @relation("BetResultLoser", fields: [loserId], references: [id])
+
+  @@index([betId])
+  @@map("bet_results")
+}
+
+model NassauPress {
+  id          String  @id @default(cuid())
+  betId       String
+  startHole   Int
+  initiatedBy String
+  amount      Float
+  
+  createdAt   DateTime @default(now())
+  
+  bet         Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
+
+  @@index([betId])
+  @@map("nassau_presses")
+}
+
+// ===== Side Bets =====
+
+model SideBet {
+  id       String      @id @default(cuid())
+  roundId  String
+  type     SideBetType
+  config   Json        // hole numbers, amounts, custom rules
+  amount   Float
+  
+  createdAt DateTime   @default(now())
+  
+  round    Round           @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  results  SideBetResult[]
+
+  @@index([roundId])
+  @@map("side_bets")
+}
+
+model SideBetResult {
+  id        String  @id @default(cuid())
+  sideBetId String
+  winnerId  String
+  hole      Int
+  details   String?
+  
+  sideBet   SideBet @relation(fields: [sideBetId], references: [id], onDelete: Cascade)
+  winner    User    @relation("SideBetWinner", fields: [winnerId], references: [id])
+
+  @@map("side_bet_results")
+}
+
+// ===== Settlements =====
+
+model Settlement {
+  id          String           @id @default(cuid())
+  roundId     String
+  fromUserId  String
+  toUserId    String
+  amount      Float
+  status      SettlementStatus @default(PENDING)
+  
+  confirmedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  round       Round   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  fromUser    User    @relation("SettlementFrom", fields: [fromUserId], references: [id])
+  toUser      User    @relation("SettlementTo", fields: [toUserId], references: [id])
+
+  @@index([roundId])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@map("settlements")
+}
+
+// ===== Enums =====
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  CLUB
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum RoundType {
+  NINE_HOLES
+  EIGHTEEN_HOLES
+}
+
+enum RoundStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BetType {
+  NASSAU
+  SKINS
+  MATCH_PLAY
+  WOLF
+  STABLEFORD
+  VEGAS
+}
+
+enum BetStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SideBetType {
+  CLOSEST_TO_PIN
+  LONGEST_DRIVE
+  GREENIE
+  SANDY
+  BARKIE
+  CUSTOM
+}
+
+enum SettlementStatus {
+  PENDING
+  CONFIRMED
+  DISPUTED
+}
